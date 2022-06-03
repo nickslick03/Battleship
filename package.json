@@ -1,0 +1,19 @@
+{
+  "name": "battleship",
+  "private": true,
+  "version": "0.0.0",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc && vite build",
+    "preview": "vite preview",
+    "test": "jest",
+    "watch": "jest --watchAll *.ts"
+  },
+  "devDependencies": {
+    "@babel/preset-env": "^7.18.2",
+    "@types/jest": "^27.5.2",
+    "ts-jest": "^28.0.3",
+    "typescript": "^4.5.4",
+    "vite": "^2.9.9"
+  }
+}
