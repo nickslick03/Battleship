@@ -1,0 +1,58 @@
+@import url('https://fonts.googleapis.com/css2?family=Kdam+Thmor+Pro&family=Odibee+Sans&display=swap');
+
+body {
+    background-color: darkcyan;
+    margin: 0;
+}
+
+#app { 
+    min-height: 100vh;
+    font-family: 'Kdam Thmor Pro', sans-serif;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+h1 {
+    filter: drop-shadow(0 0 8px white);
+}
+
+.gamegridContainer {
+    min-width: 250px;
+    min-height: 250px;
+    width: 38vw;
+    height: 38vw;
+    display: grid;
+    grid-template-columns: 1fr 10fr;
+    grid-template-rows: 1fr 10fr;
+}
+
+.columnHeader, .rowHeader {
+    display: flex;
+    justify-content: space-around;
+}
+
+.rowHeader {
+    flex-direction: column;
+}
+
+.gamegrid {
+    display: grid;
+    grid-template-columns: repeat(10, 1fr);
+    grid-template-rows: repeat(10, 1fr);
+    justify-items: center;
+    align-items: center;
+}
+
+.gamegrid > div:empty {
+    height: 80%;
+    width: 80%;
+    background-color: navy;
+    filter: drop-shadow(2px 2px 4px rgba(0, 0, 0, 0.8));
+    transition-property: transform, background-color;
+    transition-duration: .4s;
+}
+
+.gamegrid > div:empty:hover {
+    transform: scale(0.8);
+}
