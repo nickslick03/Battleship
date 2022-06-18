@@ -4,13 +4,13 @@
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <link rel="stylesheet" href="index.css">
+    <link rel="stylesheet" href="./index.css">
     <title>Vite App</title>
   </head>
   <body>
-    <div id="app">
-      <h1>Battleship</h1>
+    <div id="app" class="noselect">
       <div class="gamegridContainer">
+        <div class="centerContainer"></div>
         <div class="emptyCorner"></div>
         <div class="columnHeader">
           <div>A</div>
@@ -139,7 +139,22 @@
           <div></div>
         </div>
       </div>
-      <h2>Player 1's Turn</h2>
+      <h2 class='turn'></h2>
+      <div class="shipSelectionContainer">
+        <div class="shipButtonContainer">
+          <button class="aircraftCarrier">aircraft carrier</button>
+          <button class="battleship">battle ship</button>
+          <button class="cruiser">crusier</button>
+          <button class="destroyer">destroyer</button>
+          <button class="destroyer">destroyer</button>
+          <button class="submarine">sub marine</button>
+          <button class="submarine">sub marine</button>
+        </div>
+        <div class="rotate"><svg style="width:24px;height:24px" viewBox="0 0 24 24">
+          <path fill="currentColor" d="M4,2H7A2,2 0 0,1 9,4V20A2,2 0 0,1 7,22H4A2,2 0 0,1 2,20V4A2,2 0 0,1 4,2M20,15A2,2 0 0,1 22,17V20A2,2 0 0,1 20,22H11V15H20M14,4A8,8 0 0,1 22,12L21.94,13H19.92L20,12A6,6 0 0,0 14,6V9L10,5L14,1V4Z" />
+        </svg></div>
+        <button class="doneButton">Done</button>
+      </div>
     </div>
     <script type="module" src="/src/Main.ts"></script>
   </body>

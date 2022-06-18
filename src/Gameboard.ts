@@ -1,105 +1,58 @@
-import { Ship } from './Ship';
+import { arePointsEqual, Point, Ship, shipFactory } from "./Ship";
 
 export type Gameboard = {
-    shipInfoList: ShipInfo[],
-    attackList: Point[],
-    placeShip(ship: Ship, startingPoint: Point, isHorizontal: boolean): void,
-    receiveAttack(attackPoint: Point): AttackMessage,
-    getShipOnPoint(point: Point): ShipInfo | false,
-    getShipPoints({location: {point1, point2}}: ShipInfo): Point[],
-    isAllSunk(): boolean,
+    readonly attacklist: Point[],
+    addShip(newShip: Ship): boolean,
+    recieveAttack(attackPoint: Point): AttackInfo,
 };
 
-export type ShipInfo = {
-    ship: Ship,
-    location: Location,
-    isHorizontal: boolean,
-};
+export type AttackInfo = {
+    returnPoint: Point,
+    isHit: boolean,
+    isSunk: string | false,
+    isAllSunk: boolean,
+}
 
-type Location = {
-    point1: Point,
-    point2: Point,
-};
+export const arePointlistsOverlapping = (pointlist1: Point[], pointlist2: Point[]) =>
+    pointlist1.some(point1 =>
+        pointlist2.some(point2 =>
+            arePointsEqual(point1, point2)
+        )
+    );
 
-export type Point = {
-    'x': number,
-    'y': number,
-};
+const areAllShipsSunk = (shiplist: Ship[]) => shiplist.every(ship => ship.isSunk());
 
-export type AttackMessage = {
-    isHit: Point | false;
-    isSunk: Ship | false;
-    isAllSunken: boolean;
-};
-
-export const arePointsEqual = ({ x: x1, y: y1 }: Point, { x: x2, y: y2 }: Point): boolean => x1 === x2 && y1 === y2;
-
-export const gameboardFactory = (): Gameboard => ({
-    shipInfoList: [],
-    attackList: [],
-    placeShip(ship, startingPoint, isHorizontal) {
-        let { x, y } = startingPoint;
-        if(x < 0 || y < 0) throw new Error(`coordinates (${x}, ${y}) out of bounds`);
-        isHorizontal ? x += ship.length - 1 : y += ship.length - 1;
-        if(y > 10 || x > 10) throw new Error(`coordinates (${x}, ${y}) out of bounds`);
-        this.shipInfoList.push({
-            ship,
-            location: {
-                point1: startingPoint,
-                point2: { x, y },
-            },
-            isHorizontal,
-        });
-    },
-    receiveAttack(attackPoint) {
-        this.attackList.forEach((point) => {
-            if(attackPoint.x === point.x && attackPoint.y === point.y)
-                throw new Error(`Point (${attackPoint.x}, ${attackPoint.y}) has already been attacked`);
-        });
-        this.attackList.push(attackPoint);
-        let shipInfo = this.getShipOnPoint(attackPoint);
-        let isSunk: Ship | false = false;
-        if(shipInfo !== false) {
-            shipInfo.ship.hit();
-            if(shipInfo.ship.isSunk()) {
-                isSunk = shipInfo.ship;
+export function gameboardFactory(): Gameboard {
+    const shiplist: Ship[] = [];
+    const attackList: Point[] = [];
+    return {
+        get attacklist() {
+            return [...attackList];
+        },
+        addShip(newShip: Ship): boolean {
+            if (shiplist.some(ship => arePointlistsOverlapping(ship.pointlist, newShip.pointlist)))
+                return false;
+            shiplist.push(newShip);
+            return true;
+        },
+        recieveAttack(attackPoint: Point): AttackInfo {
+            let returnPoint = attackPoint;
+            const hitShip = shiplist.find(ship => ship.hit(attackPoint) ? ship : false);
+            const isShipSunk = hitShip !== undefined ? hitShip.isSunk() : false;
+            const isAllSunk = areAllShipsSunk(shiplist);
+            if(hitShip) {
+                returnPoint = hitShip.pointlist.find(point => arePointsEqual(point, attackPoint)) as Point;
+                attackList.push(returnPoint);
+            } else {
+                returnPoint.isMiss = true;   
             }
-        }
-        return {
-            isHit: shipInfo ? attackPoint : false,
-            isSunk,
-            isAllSunken: this.isAllSunk(),
-        };
-    },
-    getShipOnPoint(point) {
-        for(const shipInfo of this.shipInfoList) {
-            if (this.getShipPoints(shipInfo).some((shipPoint) => arePointsEqual(point, shipPoint)))
-                return shipInfo;
-        }
-        return false;
-    },
-    getShipPoints({location: {point1, point2}, isHorizontal}) {
-        let start: number, end: number = 0;
-        const shipPoints: Point[] = [];
-        if(isHorizontal) {
-            start = point1.x;
-            end = point2.x;
-        } else {
-            start = point1.y;
-            end = point2.y;
-        }
-        for(; start <= end; start++) {
-            shipPoints.push(isHorizontal ? { 
-                x: start, 
-                y: point1.y 
-            } : {
-                x: point1.x,
-                y: start
-            });
-        }
-        return shipPoints;
-    },
-    isAllSunk() {
-        return this.shipInfoList.every(shipInfo => shipInfo.ship.isSunk());
-    },
-});
+            attackList.push(returnPoint);
+            return {
+                returnPoint,
+                isHit: hitShip !== undefined ? true : false,
+                isSunk: isShipSunk ? (hitShip as Ship).name : false,
+                isAllSunk,
+            };
+        },
+    };
+}

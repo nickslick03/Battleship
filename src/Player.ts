@@ -1,29 +1,25 @@
-import { AttackMessage, Gameboard, gameboardFactory, Point } from "./Gameboard";
-import { Ship, shipFactory } from "./Ship";
+import { Gameboard, gameboardFactory } from "./Gameboard";
+import { arePointsEqual, Point } from "./Ship";
 
-export type BasePlayer = {
+export type Player = {
     gameboard: Gameboard,
-    shipList: Ship[],
+    isComputer: boolean,
 }
 
-export type PersonPlayer = BasePlayer & {
-    attack(attackPoint: Point): AttackMessage,
-}
-
-export const basePlayerFactory = (): BasePlayer => ({
+export const playerFactory = (isComputer: boolean): Player => ({
     gameboard: gameboardFactory(),
-    shipList: [
-        shipFactory('Aircraft Carrier', 5),
-        shipFactory('Battleship', 4),
-        shipFactory('Crusier', 3),
-        shipFactory('Destroyer', 2),
-        shipFactory('Destroyer', 2),
-        shipFactory('Submarine', 1),
-        shipFactory('Submarine', 1),
-    ],
-});
+    isComputer,
+}); 
 
-export const personPlayerFactory = (basePlayer: BasePlayer, enemyPlayer: BasePlayer): PersonPlayer => ({
-    ...basePlayer,
-    attack: (attackPoint: Point) => enemyPlayer.gameboard.receiveAttack(attackPoint),
-});
+export const computerMove = ({ gameboard }: Player): Point => {
+    let attackPoint: Point;
+    do {
+        attackPoint = {
+            x: randomCoordinate(),
+            y: randomCoordinate(),
+        }
+    } while (gameboard.attacklist.some(point => arePointsEqual(point, attackPoint)));
+    return attackPoint;
+};
+
+export const randomCoordinate = () => Math.floor(Math.random() * 10) + 1;

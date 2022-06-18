@@ -1,91 +1,111 @@
-import { ComputerPlayer, computerPlayer } from "./Computer";
-import { arePointsEqual, AttackMessage, Point, ShipInfo } from "./Gameboard";
-import { basePlayerFactory, PersonPlayer, personPlayerFactory } from "./Player";
-import { Ship } from "./Ship";
+import { AttackInfo } from "./Gameboard";
+import { computerMove, Player, playerFactory } from "./Player";
+import { arePointsEqual, Point } from "./Ship";
 
-type GridPoint = {
-    x: string,
-    y: number,
+export const indexToPoint = (index: number): Point => ({
+    x: index % 10 + 1, 
+    y: Math.floor(index / 10) + 1,
+});
+
+export const pointToIndex = ({ x, y }: Point): number =>  x - 1 + (y - 1) * 10;
+
+type Gamegrid = {
+    container: HTMLDivElement,
+    centerContainer: HTMLDivElement,
+    children: HTMLDivElement[],
+    turnLabel: HTMLHeadingElement,
+    addEvent(): void,
+    removeEvent(): void,
 }
 
-export const startGame = (isComputer: boolean) => {
-    const basePlayer1 = basePlayerFactory();
-    const basePlayer2 = basePlayerFactory();
-    const player1 = personPlayerFactory(basePlayer1, basePlayer2);
-    const player2 = isComputer ? computerPlayer(basePlayer2, player1) : personPlayerFactory(basePlayer2, player1);
-    for(let i = 0; i < 7; i ++) {
-        player1.gameboard.placeShip(player1.shipList[i], {x: i + 1, y: 1}, false);
-        player2.gameboard.placeShip(player1.shipList[i], {x: 1, y: i + 1}, true);
+const gamegridEventListener = async (takeTurn: Function, isPlayer2Computer: boolean) => {
+    const container = document.querySelector('.gamegrid') as HTMLDivElement;
+    const children = Array.from(container.children) as HTMLDivElement[];
+    const gamegrid: Gamegrid = {
+        container,
+        centerContainer: document.querySelector('.centerContainer') as HTMLDivElement, 
+        children,
+        turnLabel: document.querySelector('.turn') as HTMLHeadingElement,
+        addEvent: () => container.addEventListener('click', targetToPoint),
+        removeEvent: () => container.removeEventListener('click', targetToPoint),
     }
-    addPointEventListeners(takeTurn(player1, player2));
+    let isPlayer1sTurn = true;
+    gamegrid.turnLabel.textContent = 'Player 1\'s Turn';
+    gamegrid.centerContainer.textContent = 'Battleship has started!';
+    gamegrid.centerContainer.style.animation = 'attackMessage 3s';
+    gamegrid.centerContainer.style.zIndex = '1';
+    await pause(3);
+    gamegrid.centerContainer.style.animation = '';
+    gamegrid.centerContainer.style.zIndex = '';
+    const targetToPoint = async ({target}: MouseEvent) => {
+        const index = children.indexOf(target as HTMLDivElement);
+        if(index > -1) {
+            if(isPlayer1sTurn === false && isPlayer2Computer)
+                return;
+            await takeTurn(gamegrid, isPlayer1sTurn, indexToPoint(index));
+            isPlayer1sTurn = isPlayer1sTurn ? false : true;
+            if(isPlayer1sTurn === false && isPlayer2Computer) {
+                await takeTurn(gamegrid, false, {x: 0, y: 0});
+                isPlayer1sTurn = true;
+            }
+        }
+    };
+    gamegrid.addEvent();
+};
+
+export function startGame(player1: Player, player2: Player) {
+    gamegridEventListener(takeTurn(player1, player2), player2.isComputer);
 }
 
-let isPlayer1Turn = true;
-let isInTurn = false;
-const gridList = Array.from(document.querySelector('.gamegrid')?.children as HTMLCollection) as HTMLDivElement[];
-const turnElement = document.querySelector('h2') as HTMLHeadingElement;
+const pointColor = (point: Point) => {
+    if(point.isSunk) return 'black';
+    if(point.isHit) return 'red';
+    return 'white';
+};
 
-const takeTurn = (player1: PersonPlayer, player2: ComputerPlayer | PersonPlayer): Function => {
-    return async (point: Point, div: HTMLDivElement) => {
-        if(isInTurn)
+const attackInfoToMessage = (attackInfo: AttackInfo): string => {
+    if(attackInfo.isAllSunk) return 'You win!';
+    if(attackInfo.isSunk) return `${attackInfo.isSunk} has been sunk!`;
+    if(attackInfo.isHit) return 'Hit!';
+    return 'Miss.';
+}
+
+export const pause = async (seconds: number) => new Promise(resolve => setTimeout(resolve, seconds * 1000));
+
+const takeTurn = (player1: Player, player2: Player) => {
+    let inMiddleOfTurn = false;
+    return async (gamegrid: Gamegrid, isPlayer1sTurn: boolean, attackPoint: Point) => {
+        const attackingPlayer = isPlayer1sTurn ? player1 : player2;
+        const defendingPlayer = isPlayer1sTurn ? player2 : player1;
+        if (inMiddleOfTurn
+            || defendingPlayer.gameboard.attacklist.some(point => arePointsEqual(point, attackPoint)))
             return;
-        else
-            isInTurn = true;
-        let currentPlayer = isPlayer1Turn ? player1 : player2;
-        let nextPlayer = isPlayer1Turn ? player2 : player1;
-        if(nextPlayer.gameboard.attackList.some(attackPoint => arePointsEqual(attackPoint, point))) {
-            isInTurn = false;
+        inMiddleOfTurn = true;
+        if(isPlayer1sTurn === false && player2.isComputer) attackPoint = computerMove(player1);
+        const attackInfo = defendingPlayer.gameboard.recieveAttack(attackPoint);
+        gamegrid.children[pointToIndex(attackPoint)].style.background = pointColor(attackInfo.returnPoint);
+        if(attackInfo.isSunk)
+            defendingPlayer.gameboard.attacklist.forEach(point => {
+                if(point.isSunk) {
+                    gamegrid.children[pointToIndex(point)].style.backgroundColor = 'black';
+                }
+            });
+        gamegrid.centerContainer.textContent = attackInfoToMessage(attackInfo);
+        gamegrid.centerContainer.style.animation = 'attackMessage 3s';
+        gamegrid.centerContainer.style.zIndex = '1';
+        await pause(3);
+        if(attackInfo.isAllSunk) 
             return;
-        }
-        let attackMessage = currentPlayer.attack(point);
-        div.style.backgroundColor = determinePointColor(nextPlayer, point);
+        gamegrid.centerContainer.style.animation = '';
+        gamegrid.centerContainer.style.zIndex = '';
+        gamegrid.children.forEach(div => div.style.backgroundColor = 'navy');
         await pause(1);
-        gridList.forEach(div => div.style.backgroundColor = 'navy');
-        await pause(1);
-        currentPlayer.gameboard.attackList.forEach(
-            point => pointConverters.pointToElement(point).style.backgroundColor = determinePointColor(
-            currentPlayer,
-            point));
-        console.log(currentPlayer.gameboard.attackList);
-        isPlayer1Turn = !isPlayer1Turn;
-        turnElement.textContent = `Player ${isPlayer1Turn ? '1' : '2'}'s turn`;
-        isInTurn = false;
+        attackingPlayer.gameboard.attacklist.forEach(point => {
+            const div = gamegrid.children[pointToIndex(point)];
+            div.style.backgroundColor = pointColor(point);
+        });
+        gamegrid.turnLabel.textContent = `Player ${isPlayer1sTurn ? '2' : '1'}'s Turn`;
+        gamegrid.addEvent();
+        inMiddleOfTurn = false;
     };
 };
-    
-const determinePointColor = (player: ComputerPlayer | PersonPlayer, point: Point): 'white' | 'red' | 'black' => {
-    const shipInfo = player.gameboard.getShipOnPoint(point);
-    if(shipInfo !== false)
-        if(shipInfo.ship.isSunk()){
-            console.log(point);
-            return 'black';
-        } 
-        else
-            return 'red';
-    else
-        return 'white';
-};
-
-const addPointEventListeners = (takeTurn: Function) => {
-    const gridList = document.querySelector('.gamegrid')?.children as HTMLCollection;
-    Array.from(gridList).forEach((div, index) => 
-        div.addEventListener('click', () => 
-            takeTurn(pointConverters.indexToPoint(index), div as HTMLDivElement))
-    );
-};
-
-const pointConverters = (() => {
-     const letterList = [...'ABCDEFGHIJ'];
-    return {
-        pointToGridPoint: ({ x, y }: Point): GridPoint => ({x: letterList[x - 1], y}),
-        pointToElement: ({ x, y }: Point): HTMLDivElement => gridList[ x - 1 + (y - 1) * 10],
-        indexToPoint: (index: number): Point => ({ x: index % 10 + 1, y: Math.floor(index / 10) + 1,}),
-    }
-})();
-
-
-/**
- * Pauses the script for a set amount of seconds. Use await keyword before function.
- * @param seconds - number of seconds to pause.
- */
-const pause = async (seconds: number) => new Promise(resolve => setTimeout(resolve, seconds * 1000));
